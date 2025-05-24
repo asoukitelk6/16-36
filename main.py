@@ -22,6 +22,8 @@ class User():
     def __init__(self,user_id,name,level='user'):
         self.__user_id=user_id
         self.__name=name
+        if level not in ['user', 'admin']:
+            raise ValueError("Уровень доступа должен быть 'user' или 'admin'")
         self.__level=level
 
     def get_user_id(self):
@@ -36,24 +38,47 @@ class User():
     def set_name(self,new_name):
         self.__name=new_name
 
-    def set_level(self,new_level):
-        self.__level=new_level
-
 class Admin(User):
     def __init__(self,user_id,name):
-        super().__init__(user_id,name,'admin')
+        super().__init__(user_id,name,level = 'admin')
         self.__users = []
 
-    def add_user (self,*args,**kwargs):
+    def add_user(self, *args, **kwargs):
+        # ИСПРАВЛЕНО: Добавлена проверка, что администратор не добавляет самого себя
+        if len(args) == 1 and isinstance(args[0], User) and not kwargs:
+            user = args[0]
+            if user.get_user_id() == self.get_user_id():
+                print("Ошибка: нельзя добавить самого себя")
+                return
+            if any(u.get_user_id() == user.get_user_id() for u in self.__users):
+                print(f"Ошибка: пользователь с ID {user.get_user_id()} уже существует")
+                return
+            self.__users.append(user)
+            print(f'Добавлен пользователь "{user.get_name()}" (ID: {user.get_user_id()})')
+            return
+
+        # ИСПРАВЛЕНО: Добавлена проверка обязательных полей для словаря
         if kwargs:
-            user_data=kwargs
-        elif len(args) >=2:
-            user_data = {'user_id':args[0],'name':args[1],'level':args[2] if len(args)>2 else 'user'}
+            if 'user_id' not in kwargs or 'name' not in kwargs:
+                raise ValueError("Нужно передать user_id и name")
+            user_data = kwargs
+        elif len(args) >= 2:
+            user_data = {
+                'user_id': args[0],
+                'name': args[1],
+                'level': args[2] if len(args) > 2 else 'user'
+            }
         else:
-            raise ValueError ('Нужно передать ID и имя (либо через словарь - user_id, name, level)')
+            raise ValueError('Нужно передать ID и имя (либо через словарь)')
+
+        # ИСПРАВЛЕНО: Проверка, что не добавляем самого себя
+        if user_data["user_id"] == self.get_user_id():
+            print("Ошибка: нельзя добавить самого себя")
+            return
+
         for u in self.__users:
             if u.get_user_id() == user_data["user_id"]:
-                print(f"Ошибка: пользователь с ID {user_data["user_id"]} уже существует")
+                print(f"Ошибка: пользователь с ID {user_data['user_id']} уже существует")
                 return
 
         new_user = User(user_id= user_data["user_id"], name=user_data["name"], level=user_data.get("level", "user"))
@@ -79,10 +104,13 @@ class Admin(User):
 
 admin=Admin(1,'Админ')
 
+user1=User(10,'Пользователь10')
+
+
 admin.list_users()
 admin.add_user(2, 'Пользователь1')
 admin.add_user(3,'Пользователь2')
-admin.add_user(1,'Админ','admin')
+admin.add_user(11,'Админ11','admin')
 
 admin.add_user(user_id=3,name='Пользователь3')
 admin.add_user(user_id=4,name='Пользователь4')
@@ -90,7 +118,7 @@ admin.add_user(user_id=4,name='Пользователь4')
 admin.remove_user(3,'Пользователь3')
 admin.remove_user(3,'Пользователь2')
 
-admin.list_users()
+admin.add_user(user1)
 
 admin.add_user(user_id=3,name='Пользователь3',level='admin')
 admin.list_users()
